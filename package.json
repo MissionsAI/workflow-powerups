@@ -1,0 +1,32 @@
+{
+  "name": "workflow-powerups",
+  "version": "0.0.1",
+  "description": "A collection of simple Workflow Builder extensions (aka Steps from Apps) to serve as examples and be useful in their own right.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "source ./.env && nodemon index.js",
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MissionsAI/workflow-powerups.git"
+  },
+  "author": "Mike Brevoort",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MissionsAI/workflow-powerups/issues"
+  },
+  "homepage": "https://github.com/MissionsAI/workflow-powerups#readme",
+  "dependencies": {
+    "@slack/bolt": "2.1.1-workflowStepsBeta.1",
+    "lodash.get": "^4.4.2",
+    "redis": "^3.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.4"
+  }
+}
