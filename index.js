@@ -1,6 +1,7 @@
 import { default as Bolt } from "@slack/bolt";
 import { registerRandomStringStep } from "./random-string-step/index.js";
 import { registerUpdateSlackStatusStep } from "./update-slack-status-step/index.js";
+import { registerFlowUtilitiesStep } from "./flow-utilities/index.js";
 import { initializeStorage } from "./storage.js";
 
 const storage = initializeStorage(process.env.REDIS_URL)
@@ -24,7 +25,8 @@ const app = new Bolt.App({
 });
 
 registerRandomStringStep(app);
-registerUpdateSlackStatusStep(app, storage)
+registerUpdateSlackStatusStep(app, storage);
+registerFlowUtilitiesStep(app);
 
 app.error((error) => {
   // Check the details of the error to handle cases where you should retry sending a message or stop the app

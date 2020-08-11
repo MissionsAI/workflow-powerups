@@ -24,6 +24,8 @@
   "dependencies": {
     "@slack/bolt": "2.1.1-workflowStepsBeta.1",
     "lodash.get": "^4.4.2",
+    "moment": "^2.27.0",
+    "parse-duration": "^0.4.4",
     "redis": "^3.0.2"
   },
   "devDependencies": {
