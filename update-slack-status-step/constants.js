@@ -9,4 +9,3 @@ export const BLOCK_STATUS_EMOJI = "status_emoji";
 export const ELEMENT_STATUS_EMOJI = "element_status_emoji";
 
 export const BLOCK_ACCOUNT = "account";
-export const ACTION_DISCONNECT = "disconnect";

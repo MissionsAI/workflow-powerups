@@ -8,7 +8,7 @@ const OAUTH_PATH = "/update-status-step/auth/callback";
 export const configureOauth = (app, storage) => {
   const expressApp = app.receiver.app;
 
-  expressApp.get(OAUTH_PATH, async (req, res, next) => {
+  expressApp.get(OAUTH_PATH, async (req, res) => {
     let code = req.query.code;
 
     let state = {};
@@ -33,7 +33,7 @@ export const configureOauth = (app, storage) => {
 
       const { id: authedTeamId } = result.team;
       const { id: authedUserId, access_token: userToken } = result.authed_user;
-      const { userId, teamId, externalViewId } = state;
+      const { workflowId, stepId, userId, teamId, externalViewId } = state;
 
       // Verify the same team and user was authenticated
       if (userId !== authedUserId || teamId !== authedTeamId) {
@@ -45,15 +45,22 @@ export const configureOauth = (app, storage) => {
         return;
       }
 
+      const credentialTeamId = teamId;
+      const credentialUserId = userId;
+      // This stores the user token with the user/team combo
+      await storage.setUserCredential(
+        credentialTeamId,
+        credentialUserId,
+        userToken
+      );
 
-      const credentialTeamId = teamId
-      const credentialUserId = userId
-      await storage.setUserCredential(credentialTeamId, credentialUserId, userToken)
+      // This associates the above user credential with the workflow/step combo
+      await storage.setStepCredential(workflowId, stepId, teamId, userId);
 
       // Get bot token for install
-      const installation = await storage.getInstalledTeam(credentialTeamId)
+      const installation = await storage.getInstalledTeam(credentialTeamId);
       // TODO check if installation not null
-      const botToken = installation.bot.token
+      const botToken = installation.bot.token;
 
       // Get user info
       const userInfo = await app.client.users.info({
@@ -63,16 +70,12 @@ export const configureOauth = (app, storage) => {
 
       // Render the new form view w/ the necessary state
       const viewState = {
-        // Set to the current user
-        userId,
-        // TODO: probably don't need this here
-        credentialTeamId,
-        credentialUserId,
         userName: userInfo.user.real_name,
         userImage: userInfo.user.profile.image_192,
         statusText: "",
         statusEmoji: "",
       };
+
       const view = renderWorkflowStep(
         viewState,
         renderUpdateStatusForm(viewState)
@@ -82,9 +85,7 @@ export const configureOauth = (app, storage) => {
       await app.client.views.update({
         token: botToken,
         external_id: externalViewId,
-        view: {
-          ...view,
-        },
+        view,
       });
 
       res

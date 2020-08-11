@@ -7,14 +7,13 @@ import {
   ELEMENT_STATUS_TEXT,
   BLOCK_STATUS_EMOJI,
   ELEMENT_STATUS_EMOJI,
-  ACTION_DISCONNECT,
 } from "./constants.js";
 import {
   renderWorkflowStep,
   renderConnectAccount,
   renderUpdateStatusForm,
   parseStateFromView,
-  getConnectAccountViewId,
+  getConfigureStepViewId,
 } from "./view.js";
 
 export const registerUpdateSlackStatusStep = function (app, storage) {
@@ -43,88 +42,94 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       const currentUserId = user.id;
       const currentTeamId = team.id;
 
-      let userId = get(inputs, "user_id.value");
-      let credentialTeamId = get(
-        inputs,
-        "credential_team_id.value",
-        currentTeamId
-      );
-      let credentialUserId = get(
-        inputs,
-        "credential_user_id.value",
-        currentUserId
-      );
-
-      const statusText = get(inputs, "status_text.value");
-      const statusEmoji = get(inputs, "status_emoji.value");
-
-      // configured user if we have it set w/ a credential, otherwise current user
-      const onBehalfOfUserId =
-        userId && credentialUserId ? userId : currentUserId;
-
-      const userInfo = await app.client.users.info({
-        token: context.botToken,
-        user: onBehalfOfUserId,
-      });
-
-      const viewState = {
-        // Set to the current user
-        userId: onBehalfOfUserId,
-        credentialTeamId,
-        credentialUserId,
-        userName: userInfo.user.real_name,
-        userImage: userInfo.user.profile.image_192,
-        statusText,
-        statusEmoji,
-      };
-
-      let view = null;
-
-      app.logger.info("Retreiving credential", currentTeamId, currentUserId);
-      // Check to see if we have a stored credential for the current user already
-      const userToken = await storage.getUserCredential(
-        currentTeamId,
-        currentUserId
-      );
-      app.logger.info("Credential exists", !!userToken);
-
-      // We found a token for the current user, but step isn't configured for anyone yet, let's default to them
-      if (userToken && !userId) {
-        userId = currentUserId;
-      }
-
-      // Need a custom view id so we can update it in our oauth callback
-      const externalViewId = getConnectAccountViewId({
+      // We'll use this view id for the step configuration so we can look it up during the
+      // connect account flow if needed so we can update it
+      const externalViewId = getConfigureStepViewId({
         workflowId,
         stepId,
         userId: currentUserId,
       });
 
-      // Render connect account view
-      if (!userId || !userToken) {
-        const oauthState = {
+      // Setup OAuth URL for views
+      const oauthURL = buildOAuthURL({
+        state: {
+          // todo: we could derive this in the receiver if we want
           externalViewId,
+          workflowId,
+          stepId,
           userId: currentUserId,
           teamId: currentTeamId,
-        };
+        },
+        team: currentTeamId,
+      });
 
-        view = renderWorkflowStep(
-          viewState,
-          renderConnectAccount({
-            oauthURL: buildOAuthURL({
-              state: oauthState,
-              team: currentTeamId,
-            }),
-          })
+      // Lookup current step's credential id, it should contain the user & team
+      let stepCredential = await storage.getStepCredential(workflowId, stepId);
+
+      if (!stepCredential) {
+        // If we have no step credential, try to lookup the current user's credential and create a step credential
+        const userCredential = await storage.getUserCredential(
+          currentTeamId,
+          currentUserId
         );
-      } else if (userId && credentialUserId) {
-        view = renderWorkflowStep(viewState, renderUpdateStatusForm(viewState));
+
+        // This means the user has already authenticated with this app previously
+        // So we'll default and store to them for the step credential
+        if (userCredential) {
+          stepCredential = await storage.setStepCredential(
+            workflowId,
+            stepId,
+            currentTeamId,
+            currentUserId
+          );
+        } else {
+          // In this scenario, the user hasn't authenticated w/ the app yet
+          // and the step has no credential configured, so we'll force a connect account view
+
+          // No view state for connect account view
+          const viewState = {};
+
+          view = renderWorkflowStep(
+            null,
+            renderConnectAccount({
+              oauthURL,
+            })
+          );
+          view.external_id = externalViewId;
+
+          await app.client.views.open({
+            token: context.botToken,
+            trigger_id: body.trigger_id,
+            view,
+          });
+          return;
+        }
       }
 
-      // Set an external_id we can use in oauth flow to update it with
+      // If we've made it this far, we have a step credential configured
+      const statusText = get(inputs, "status_text.value");
+      const statusEmoji = get(inputs, "status_emoji.value");
+
+      const userInfo = await app.client.users.info({
+        token: context.botToken,
+        user: stepCredential.userId,
+      });
+
+      const viewState = {
+        userName: userInfo.user.real_name,
+        userImage: userInfo.user.profile.image_192,
+        statusText,
+        statusEmoji,
+        showChangeAccount: stepCredential.userId !== currentUserId,
+        oauthURL,
+      };
+
+      const view = renderWorkflowStep(
+        viewState,
+        renderUpdateStatusForm(viewState)
+      );
       view.external_id = externalViewId;
 
-      app.logger.info("Opening workflow step view", viewState);
       await app.client.views.open({
         token: context.botToken,
         trigger_id: body.trigger_id,
@@ -136,47 +141,10 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
   // Nothing to do here, it's a link button, but need to ack it
   app.action("connect_account_button", async ({ ack }) => ack());
 
-  app.action(ACTION_DISCONNECT, async ({ ack, body, context }) => {
-    ack();
-
-    const { view, user, team } = body;
-    const currentUserId = user.id;
-    const currentTeamId = team.id;
-    const externalViewId = view.external_id;
-
-    const oauthState = {
-      externalViewId,
-      userId: currentUserId,
-      teamId: currentTeamId,
-    };
-
-    const updatedView = {
-      external_id: externalViewId,
-      ...renderWorkflowStep(
-        {},
-        renderConnectAccount({
-          oauthURL: buildOAuthURL({ state: oauthState, team: currentTeamId }),
-        })
-      ),
-    };
-
-    await app.client.views.update({
-      token: context.botToken,
-      view_id: view.id,
-      view: updatedView,
-    });
-  });
-
   // Handle saving of step config
   app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, context }) => {
     // Pull out any values from our view's state that we need that aren't part of the view submission
-    const {
-      userId,
-      credentialTeamId,
-      credentialUserId,
-      userName,
-      userImage,
-    } = parseStateFromView(view);
+    const { userName, userImage } = parseStateFromView(view);
     const workflowStepEditId = get(body, `workflow_step.workflow_step_edit_id`);
 
     const statusText = get(
@@ -189,20 +157,11 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
     );
 
     const inputs = {
-      user_id: {
-        value: userId,
-      },
-      credential_team_id: {
-        value: credentialTeamId,
-      },
-      credential_user_id: {
-        value: credentialUserId,
-      },
       status_text: {
-        value: statusText,
+        value: statusText || "",
       },
       status_emoji: {
-        value: statusEmoji,
+        value: statusEmoji || "",
       },
     };
 
@@ -242,14 +201,11 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
         },
       ],
       step_name: `Update Slack Status for ${userName}`,
-      step_image_url: userImage,
     };
-
-    app.logger.info("Updating step", params);
 
     try {
       // Call the api to save our step config - we do this prior to the ack of the view_submission
-      await app.client.apiCall("workflows.updateStep", params);
+      await app.client.workflows.updateStep(params);
     } catch (e) {
       app.logger.error("error updating step: ", e.message);
     }
@@ -262,21 +218,51 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       return;
     }
 
-    const { inputs = {}, workflow_step_execute_id } = workflow_step;
     const {
-      status_text,
-      status_emoji,
-      user_id,
-      credential_team_id,
-      credential_user_id,
-    } = inputs;
+      inputs = {},
+      workflow_id,
+      step_id,
+      workflow_step_execute_id,
+    } = workflow_step;
+
+    const stepCredential = await storage.getStepCredential(
+      workflow_id,
+      step_id
+    );
+
+    // if we have a step credential, verify we also have a token
+    // for the user configured for this workflow/step combo
+    const userToken =
+      stepCredential &&
+      (await storage.getUserCredential(
+        stepCredential.teamId,
+        stepCredential.userId
+      ));
+
+    // Verify we have a step credential for this workflow/step combo
+    if (!stepCredential || !userToken) {
+      if (!stepCredential) {
+        app.logger.error("No step credential found", { workflow_id, step_id });
+      } else if (!userToken) {
+        app.logger.error("No user credential found", {
+          team_id: stepCredential.teamId,
+          user_id: stepCredential.userId,
+        });
+      }
+
+      await app.client.workflows.stepFailed({
+        token: context.botToken,
+        workflow_step_execute_id,
+        error: {
+          message:
+            "Step must be re-configured with a User to update the status for.",
+        },
+      });
+      return;
+    }
 
     try {
-      // Get the credential for the api call
-      const userToken = await storage.getUserCredential(
-        credential_team_id.value,
-        credential_user_id.value
-      );
+      const { status_text, status_emoji } = inputs;
       const statusText = status_text.value || "";
       const statusEmoji = status_emoji.value || "";
 
@@ -289,11 +275,11 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       });
 
       // Report back that the step completed
-      await app.client.apiCall("workflows.stepCompleted", {
+      await app.client.workflows.stepCompleted({
         token: context.botToken,
         workflow_step_execute_id,
         outputs: {
-          status_user: user_id.value,
+          status_user: stepCredential.userId,
           status_text: statusText,
           status_emoji: statusEmoji,
         },
@@ -302,8 +288,11 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       app.logger.info("step completed", status_text.value, status_emoji.value);
     } catch (e) {
       app.logger.error("Error completing step", e.message);
-      await app.client.apiCall("workflows.stepFailed", {
+      await app.client.workflows.stepFailed({
         token: context.botToken,
+        error: {
+          message: "We were unable to update the user profile status",
+        },
       });
     }
   });

@@ -5,8 +5,8 @@ import {
   BLOCK_STATUS_EMOJI,
   ELEMENT_STATUS_EMOJI,
   BLOCK_ACCOUNT,
-  ACTION_DISCONNECT,
 } from "./constants.js";
+import { buildOAuthURL } from "./oauth.js";
 
 export const renderWorkflowStep = function (state = {}, blocks) {
   return {
@@ -48,7 +48,7 @@ export const renderConnectAccount = ({ oauthURL }) => {
   return blocks;
 };
 
-export const getConnectAccountViewId = ({ userId, workflowId, stepId }) => {
+export const getConfigureStepViewId = ({ userId, workflowId, stepId }) => {
   return `connect_${workflowId}_${stepId}_${userId}_${Date.now()}`;
 };
 
@@ -56,8 +56,10 @@ export const getConnectAccountViewId = ({ userId, workflowId, stepId }) => {
 export const renderUpdateStatusForm = function ({
   userName,
   userImage,
-  statusText,
-  statusEmoji,
+  statusText = "",
+  statusEmoji = "",
+  showChangeAccount = false,
+  oauthURL = "",
 }) {
   const blocks = [
     {
@@ -66,39 +68,6 @@ export const renderUpdateStatusForm = function ({
       text: {
         type: "mrkdwn",
         text: `When this step runs, it will update the status of the following user.`,
-      },
-      accessory: {
-        type: "overflow",
-        action_id: ACTION_DISCONNECT,
-        confirm: {
-          title: {
-            type: "plain_text",
-            text: "Disconnect Account",
-          },
-          text: {
-            type: "mrkdwn",
-            text:
-              "Are you sure you want to disconnect this account from this step?  You will need to connect a new account afterwards.",
-          },
-          confirm: {
-            type: "plain_text",
-            text: "Disconnect",
-          },
-          deny: {
-            type: "plain_text",
-            text: "Cancel",
-          },
-          style: "danger",
-        },
-        options: [
-          {
-            text: {
-              type: "plain_text",
-              text: "Disconnect",
-            },
-            value: "disconnect",
-          },
-        ],
       },
     },
     {
@@ -115,6 +84,26 @@ export const renderUpdateStatusForm = function ({
         },
       ],
     },
+  ];
+
+  if (!showChangeAccount && buildOAuthURL) {
+    blocks.push({
+      type: "actions",
+      elements: [
+        {
+          action_id: "connect_account_button",
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Change to Me",
+          },
+          url: oauthURL,
+        },
+      ],
+    });
+  }
+
+  blocks.push(
     {
       type: "divider",
     },
@@ -145,8 +134,8 @@ export const renderUpdateStatusForm = function ({
         type: "plain_text",
         text: "Status Emoji",
       },
-    },
-  ];
+    }
+  );
 
   return blocks;
 };
