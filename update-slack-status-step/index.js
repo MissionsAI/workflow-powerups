@@ -18,7 +18,7 @@ import {
 } from "./view.js";
 
 export const registerUpdateSlackStatusStep = function (app, storage) {
-  console.log(`⚙️  Registering ${STEP_CALLBACK_ID}`)
+  console.log(`⚙️  Registering ${STEP_CALLBACK_ID}`);
   configureOauth(app, storage);
 
   // Register step config action
@@ -44,14 +44,23 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       const currentTeamId = team.id;
 
       let userId = get(inputs, "user_id.value");
-      let credentialTeamId = get(inputs, "credential_team_id.value", currentTeamId);
-      let credentialUserId = get(inputs, "credential_user_id.value", currentUserId);
-      
+      let credentialTeamId = get(
+        inputs,
+        "credential_team_id.value",
+        currentTeamId
+      );
+      let credentialUserId = get(
+        inputs,
+        "credential_user_id.value",
+        currentUserId
+      );
+
       const statusText = get(inputs, "status_text.value");
       const statusEmoji = get(inputs, "status_emoji.value");
 
       // configured user if we have it set w/ a credential, otherwise current user
-      const onBehalfOfUserId = userId && credentialUserId ? userId : currentUserId;
+      const onBehalfOfUserId =
+        userId && credentialUserId ? userId : currentUserId;
 
       const userInfo = await app.client.users.info({
         token: context.botToken,
@@ -73,7 +82,10 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
 
       app.logger.info("Retreiving credential", currentTeamId, currentUserId);
       // Check to see if we have a stored credential for the current user already
-      const userToken = await storage.getUserCredential(currentTeamId, currentUserId)
+      const userToken = await storage.getUserCredential(
+        currentTeamId,
+        currentUserId
+      );
       app.logger.info("Credential exists", !!userToken);
 
       // We found a token for the current user, but step isn't configured for anyone yet, let's default to them
@@ -158,7 +170,13 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
   // Handle saving of step config
   app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, context }) => {
     // Pull out any values from our view's state that we need that aren't part of the view submission
-    const { userId, credentialTeamId, credentialUserId } = parseStateFromView(view);
+    const {
+      userId,
+      credentialTeamId,
+      credentialUserId,
+      userName,
+      userImage,
+    } = parseStateFromView(view);
     const workflowStepEditId = get(body, `workflow_step.workflow_step_edit_id`);
 
     const statusText = get(
@@ -223,6 +241,8 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
           label: `Updated status emoji`,
         },
       ],
+      step_name: `Update Slack Status for ${userName}`,
+      step_image_url: userImage,
     };
 
     app.logger.info("Updating step", params);
@@ -243,11 +263,20 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
     }
 
     const { inputs = {}, workflow_step_execute_id } = workflow_step;
-    const { status_text, status_emoji, user_id, credential_team_id, credential_user_id } = inputs;
+    const {
+      status_text,
+      status_emoji,
+      user_id,
+      credential_team_id,
+      credential_user_id,
+    } = inputs;
 
     try {
       // Get the credential for the api call
-      const userToken = await storage.getUserCredential(credential_team_id.value, credential_user_id.value);
+      const userToken = await storage.getUserCredential(
+        credential_team_id.value,
+        credential_user_id.value
+      );
       const statusText = status_text.value || "";
       const statusEmoji = status_emoji.value || "";
 
