@@ -86,7 +86,7 @@ export const renderUpdateStatusForm = function ({
     },
   ];
 
-  if (!showChangeAccount && buildOAuthURL) {
+  if (showChangeAccount) {
     blocks.push({
       type: "actions",
       elements: [

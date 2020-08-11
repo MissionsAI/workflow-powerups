@@ -86,16 +86,15 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
           // In this scenario, the user hasn't authenticated w/ the app yet
           // and the step has no credential configured, so we'll force a connect account view
 
-          // No view state for connect account view
-          const viewState = {};
-
-          view = renderWorkflowStep(
-            null,
+          const view = renderWorkflowStep(
+            {},
             renderConnectAccount({
               oauthURL,
             })
           );
           view.external_id = externalViewId;
+          // Cannot save step until we authenticate
+          view.submit_disabled = true;
 
           await app.client.views.open({
             token: context.botToken,
