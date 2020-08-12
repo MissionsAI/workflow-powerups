@@ -21,7 +21,7 @@ const renderBlocks = function (state) {
   return renderSubtypeSelection(state)
 };
 
-const renderDelaySubtype = function ({ subtype}) {
+const renderDelaySubtype = function ({ subtype, delay_duration }) {
   const blocks = [
 		{
 			type: "header",
@@ -37,7 +37,7 @@ const renderDelaySubtype = function ({ subtype}) {
 			element: {
         action_id: ELEMENT_DURATION,
 				type: "plain_text_input",
-				initial_value: "1 minute"
+				initial_value: delay_duration || "1 minute"
 			},
 			label: {
 				type: "plain_text",
@@ -77,40 +77,40 @@ const renderSubtypeSelection = function ({}) {
         value: "delay"
       }
     },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "*Filter* \n_Stop the workflow if some condition is met._"
-      },
-      accessory: {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Coming soon",
-          emoji: true
-        },
-        action_id: ACTION_SUBTYPE,
-        value: "filter"
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "*Webhook* \n_Call a webhook (or more technically make an HTTP request but ignore the response)._"
-      },
-      accessory: {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Coming soon",
-          emoji: true
-        },
-        action_id: ACTION_SUBTYPE,
-        value: "webhook"
-      }
-    }
+    // {
+    //   type: "section",
+    //   text: {
+    //     type: "mrkdwn",
+    //     text: "*Filter* \n_Stop the workflow if some condition is met._"
+    //   },
+    //   accessory: {
+    //     type: "button",
+    //     text: {
+    //       type: "plain_text",
+    //       text: "Coming soon",
+    //       emoji: true
+    //     },
+    //     action_id: ACTION_SUBTYPE,
+    //     value: "filter"
+    //   }
+    // },
+    // {
+    //   type: "section",
+    //   text: {
+    //     type: "mrkdwn",
+    //     text: "*Webhook* \n_Call a webhook (or more technically make an HTTP request but ignore the response)._"
+    //   },
+    //   accessory: {
+    //     type: "button",
+    //     text: {
+    //       type: "plain_text",
+    //       text: "Coming soon",
+    //       emoji: true
+    //     },
+    //     action_id: ACTION_SUBTYPE,
+    //     value: "webhook"
+    //   }
+    // }
   ];
 
   return blocks;

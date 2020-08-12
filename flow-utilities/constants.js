@@ -4,3 +4,4 @@ export const ACTION_SUBTYPE = "step_subtype";
 export const DELAY_SUBTYPE = "delay";
 export const ELEMENT_DURATION = "duration";
 export const BLOCK_DURATION = "duration";
+export const REDIS_KEY_SCHEDULE = "schedule-delay"

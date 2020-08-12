@@ -17,7 +17,7 @@ import {
 } from "./view.js";
 
 export const registerUpdateSlackStatusStep = function (app, storage) {
-  console.log(`⚙️  Registering ${STEP_CALLBACK_ID}`);
+  app.logger.info(`⚙️  Registering ${STEP_CALLBACK_ID}`);
   configureOauth(app, storage);
 
   // Register step config action
@@ -278,7 +278,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
         },
       });
 
-      logger.info("step completed", status_text.value, status_emoji.value);
+      logger.info("step completed", STEP_CALLBACK_ID, status_text.value, status_emoji.value);
     } catch (e) {
       logger.error("Error completing step", e.message);
       await client.workflows.stepFailed({
