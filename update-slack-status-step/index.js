@@ -17,7 +17,7 @@ import {
 } from "./view.js";
 
 export const registerUpdateSlackStatusStep = function (app, storage) {
-  console.log(`⚙️  Registering ${STEP_CALLBACK_ID}`);
+  app.logger.info(`⚙️  Registering ${STEP_CALLBACK_ID}`);
   configureOauth(app, storage);
 
   // Register step config action
@@ -135,7 +135,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
   );
 
   // Nothing to do here, it's a link button, but need to ack it
-  app.action("connect_account_button", async ({ ack }) => ack());
+  app.action("connect_account_button", async ({ ack }) => await ack());
 
   // Handle saving of step config
   app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, logger, client }) => {
@@ -278,7 +278,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
         },
       });
 
-      logger.info("step completed", status_text.value, status_emoji.value);
+      logger.info("step completed", STEP_CALLBACK_ID, status_text.value, status_emoji.value);
     } catch (e) {
       logger.error("Error completing step", e.message);
       await client.workflows.stepFailed({

@@ -1,7 +1,8 @@
 import { promisify } from "util";
 import redis from "redis";
 
-const makeInstalledTeamKey = (teamId) => `team-install-${teamId}`;
+const makeInstalledTeamKey = (teamId) => 
+  `team-install-${teamId}`;
 const makeUserCredentialKey = (teamId, userId) =>
   `user-credential-${teamId}:${userId}`;
 const makeStepCredentialId = (workflowId, stepId) =>
@@ -13,6 +14,9 @@ export const initializeStorage = (redisURL) => {
   redisClient.on("connect", () => console.error("🙆‍♂️ Redis connected"));
   const redisGet = promisify(redisClient.get).bind(redisClient);
   const redisSet = promisify(redisClient.set).bind(redisClient);
+  const redisZadd = promisify(redisClient.zadd).bind(redisClient);
+  const redisZrangebyscore = promisify(redisClient.zrangebyscore).bind(redisClient);
+  const redisZrem = promisify(redisClient.zrem).bind(redisClient);
 
   return {
     // saves a Bolt installed team object
@@ -64,6 +68,24 @@ export const initializeStorage = (redisURL) => {
         console.error(`Error parsing ${key} from Redis:`, e.message);
         return null;
       }
+    },
+
+    // Add a schedule as a Redis sorted set. Schedules are scored in the set
+    // using the unix time in milliseconds in the future. A random six digit number
+    // is added to the end to decrease the liklihood of collisions. 
+    addScheduled: async (scheduledSetKey, unixTime, val) => {
+      const randSixDigitPadding = Math.floor(100000 + Math.random() * 900000)
+      const score = `${unixTime}${randSixDigitPadding}`
+      return await redisZadd(scheduledSetKey, score, val)
+    },
+
+    listScheduledBefore: async (scheduledSetKey, beforeUnixTime) => {
+      const beforeScore = `${beforeUnixTime}999999`
+      return await redisZrangebyscore(scheduledSetKey, 0, beforeScore)
+    },
+
+    completeScheduled: async (scheduledSetKey, val) => {
+      return await redisZrem(scheduledSetKey, val)
     },
   };
 };
