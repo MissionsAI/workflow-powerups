@@ -1,7 +1,7 @@
 import { promisify } from "util";
 import redis from "redis";
 
-const makeInstalledTeamKey = (teamId) => 
+const makeInstalledTeamKey = (teamId) =>
   `team-install-${teamId}`;
 const makeUserCredentialKey = (teamId, userId) =>
   `user-credential-${teamId}:${userId}`;

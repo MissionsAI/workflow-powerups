@@ -2,8 +2,10 @@ import get from "lodash.get";
 import { promisify } from "util";
 import parse from "parse-duration";
 import moment from 'moment';
-import { STEP_CALLBACK_ID, VIEW_CALLBACK_ID, ACTION_SUBTYPE, ELEMENT_DURATION, 
-  BLOCK_DURATION, DELAY_SUBTYPE, REDIS_KEY_SCHEDULE } from "./constants.js";
+import {
+  STEP_CALLBACK_ID, VIEW_CALLBACK_ID, ACTION_SUBTYPE, ELEMENT_DURATION,
+  BLOCK_DURATION, DELAY_SUBTYPE, REDIS_KEY_SCHEDULE
+} from "./constants.js";
 import { renderStepConfig } from "./view.js";
 
 export const registerFlowUtilitiesStep = function (app, storage) {
@@ -49,7 +51,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
     await client.views.update({
       view_id: view.id,
       view: renderStepConfig(state),
-    });    
+    });
 
   })
 
@@ -58,7 +60,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
     let metadata = {}
     try {
       metadata = JSON.parse(view.private_metadata)
-    } catch(e) {
+    } catch (e) {
       logger.error("flow-utilities: Error parsing private metadata", e)
     }
 
@@ -109,11 +111,11 @@ export const registerFlowUtilitiesStep = function (app, storage) {
     }
 
     const { inputs = {}, workflow_step_execute_id } = workflow_step;
-    const subtype = ( inputs.subtype || {} ).value || ''
+    const subtype = (inputs.subtype || {}).value || ''
 
     switch (subtype) {
       case DELAY_SUBTYPE:
-        const durationStr = ( inputs.delay_duration || {} ).value || ''
+        const durationStr = (inputs.delay_duration || {}).value || ''
         const durationMs = parse(durationStr) || 0
         const futureUnixTime = moment().add(durationMs, 'ms').unix();
 
@@ -126,10 +128,10 @@ export const registerFlowUtilitiesStep = function (app, storage) {
             step_completed_payload: {
               workflow_step_execute_id
             }
-          }  
+          }
         };
-    
-        storage.addScheduled(REDIS_KEY_SCHEDULE, futureUnixTime, JSON.stringify(scheduled))            
+
+        storage.addScheduled(REDIS_KEY_SCHEDULE, futureUnixTime, JSON.stringify(scheduled))
         break;
       default:
         logger.info(`flow-utilities:workflow_step_execute: unknown subtype=${subtype}`);
@@ -145,7 +147,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
   // In the future, if we need to guarantee that messages are only processed once, we should implement a distributed
   // lock through Redis.
   let mutex = false;
-  const processInterval =  () => {
+  const processInterval = () => {
     promisify(async () => {
       // Prevent the process intervals from stepping on each other and ensure only one is running at a time.
       // It's OK to skip one, because the iterval will go on firing forever. 
@@ -169,7 +171,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
               payload.token = botToken;
               await app.client.workflows.stepCompleted(payload);
             }
-          } catch(e) {
+          } catch (e) {
             console.error("flow-utilities: error processing scheduled item", e, item)
           }
 

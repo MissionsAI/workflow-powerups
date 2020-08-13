@@ -16,49 +16,49 @@ const renderBlocks = function (state) {
   switch (subtype) {
     case DELAY_SUBTYPE:
       return renderDelaySubtype(state)
-      break;  
+      break;
   }
   return renderSubtypeSelection(state)
 };
 
 const renderDelaySubtype = function ({ subtype, delay_duration }) {
   const blocks = [
-		{
-			type: "header",
-			text: {
-				type: "plain_text",
-				text: "Delay progress of the workflow",
-				emoji: true
-			}
-		},
-		{
-			type: "input",
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "Delay progress of the workflow",
+        emoji: true
+      }
+    },
+    {
+      type: "input",
       block_id: BLOCK_DURATION,
-			element: {
+      element: {
         action_id: ELEMENT_DURATION,
-				type: "plain_text_input",
-				initial_value: delay_duration || "1 minute"
-			},
-			label: {
-				type: "plain_text",
-				text: "Duration",
-				emoji: true
-			}
-		},
-		{
-			type: "context",
-			elements: [
-				{
-					type: "mrkdwn",
-					text: "Provide a duration like `1 hour`, `30s`, `1h 20m`, etc. and we'll do our best to understand it. If the duration cannot be understood, the workflow will continue immediately"
-				}
-			]
-		}
+        type: "plain_text_input",
+        initial_value: delay_duration || "1 minute"
+      },
+      label: {
+        type: "plain_text",
+        text: "Duration",
+        emoji: true
+      }
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "Provide a duration like `1 hour`, `30s`, `1h 20m`, etc. and we'll do our best to understand it. If the duration cannot be understood, the workflow will continue immediately"
+        }
+      ]
+    }
   ]
   return blocks
 }
 
-const renderSubtypeSelection = function ({}) {
+const renderSubtypeSelection = function ({ }) {
   const blocks = [
     {
       type: "section",

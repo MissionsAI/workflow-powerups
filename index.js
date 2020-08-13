@@ -21,7 +21,7 @@ const app = new Bolt.App({
     fetchInstallation: async (installQuery) => {
       return storage.getInstalledTeam(installQuery.teamId)
     },
-  },  
+  },
 });
 
 registerRandomStringStep(app);
