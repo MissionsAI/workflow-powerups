@@ -102,7 +102,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
   });
 
   // Handle execution of the step
-  app.event("workflow_step_execute", async ({ event, logger, context }) => {
+  app.event("workflow_step_execute", async ({ event, logger, body }) => {
     const { callback_id, workflow_step = {} } = event;
     if (callback_id !== STEP_CALLBACK_ID) {
       return;
@@ -122,8 +122,8 @@ export const registerFlowUtilitiesStep = function (app, storage) {
         const scheduled = {
           type: subtype,
           message: {
+            team_id: body.team_id,
             step_completed_payload: {
-              token: context.botToken,
               workflow_step_execute_id
             }
           }  
@@ -162,7 +162,12 @@ export const registerFlowUtilitiesStep = function (app, storage) {
           try {
             const { type, message = {} } = JSON.parse(item);
             if (type === DELAY_SUBTYPE) {
-              await app.client.workflows.stepCompleted(message.step_completed_payload);
+              // lookup installation to get token based on team_id
+              const installation = await storage.getInstalledTeam(message.team_id)
+              const botToken = get(installation, "bot.token", "");
+              const payload = message.step_completed_payload || {};
+              payload.token = botToken;
+              await app.client.workflows.stepCompleted(payload);
             }
           } catch(e) {
             console.error("flow-utilities: error processing scheduled item", e, item)

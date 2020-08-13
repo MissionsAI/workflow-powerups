@@ -38,11 +38,7 @@ To run locally you'll need a `.env` file with these properties:
 export SLACK_SIGNING_SECRET=
 export SLACK_CLIENT_ID=
 export SLACK_CLIENT_SECRET=
-<<<<<<< HEAD
-export STATE_SECRET=
-=======
 export STATE_SECRET=<generate some secret value for your install>
->>>>>>> added Slack app configuration details to README
 export HOST=https://host
 export REDIS_URL=redis://127.0.0.1:6379
 ```
