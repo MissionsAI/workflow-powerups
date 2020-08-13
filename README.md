@@ -11,7 +11,6 @@ To run locally you'll need a `.env` file with these properties:
 export SLACK_SIGNING_SECRET=
 export SLACK_CLIENT_ID=
 export SLACK_CLIENT_SECRET=
-export SLACK_VERIFICATION_TOKEN=
 export STATE_SECRET=
 export HOST=https://host
 export REDIS_URL=redis://127.0.0.1:6379
