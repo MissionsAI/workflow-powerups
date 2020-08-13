@@ -8,7 +8,8 @@ import { renderStepConfig } from "./view.js";
 
 export const registerFlowUtilitiesStep = function (app, storage) {
   // Register step config action
-  app.logger.info(`⚙️  Registering ${STEP_CALLBACK_ID}`)
+  const logger = app.logger
+  logger.info(`⚙️  Registering ${STEP_CALLBACK_ID}`)
 
   // The step is editted
   app.action(
@@ -37,7 +38,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
   );
 
   // The subtype has been selected
-  app.action(ACTION_SUBTYPE, async ({ context, body, action, ack }) => {
+  app.action(ACTION_SUBTYPE, async ({ body, action, ack, client }) => {
     ack();
     const { view } = body;
     const subtype = action.value
@@ -45,8 +46,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
       subtype,
     };
 
-    await app.client.views.update({
-      token: context.botToken,
+    await client.views.update({
       view_id: view.id,
       view: renderStepConfig(state),
     });    
@@ -54,12 +54,12 @@ export const registerFlowUtilitiesStep = function (app, storage) {
   })
 
   // Handle saving of step config
-  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, context }) => {
+  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, client, logger }) => {
     let metadata = {}
     try {
       metadata = JSON.parse(view.private_metadata)
     } catch(e) {
-      app.logger.error("flow-utilities: Error parsing private metadata", e)
+      logger.error("flow-utilities: Error parsing private metadata", e)
     }
 
     const subtype = metadata.subtype || ''
@@ -87,23 +87,22 @@ export const registerFlowUtilitiesStep = function (app, storage) {
     ack();
 
     const params = {
-      token: context.botToken,
       workflow_step_edit_id: workflowStepEditId,
       inputs,
       outputs: [],
       step_name: stepName,
     };
 
-    app.logger.info("updateStep params: ", params);
+    logger.info("updateStep params: ", params);
     try {
-      await app.client.apiCall("workflows.updateStep", params);
+      await client.workflows.updateStep(params);
     } catch (e) {
-      app.logger.error("error updating step: ", e.message);
+      logger.error("error updating step: ", e.message);
     }
   });
 
   // Handle execution of the step
-  app.event("workflow_step_execute", async ({ event, body, context }) => {
+  app.event("workflow_step_execute", async ({ event, logger, context }) => {
     const { callback_id, workflow_step = {} } = event;
     if (callback_id !== STEP_CALLBACK_ID) {
       return;
@@ -133,7 +132,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
         storage.addScheduled(REDIS_KEY_SCHEDULE, futureUnixTime, JSON.stringify(scheduled))            
         break;
       default:
-        app.logger.info(`flow-utilities:workflow_step_execute: unknown subtype=${subtype}`);
+        logger.info(`flow-utilities:workflow_step_execute: unknown subtype=${subtype}`);
         break;
     }
   });
