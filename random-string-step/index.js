@@ -10,8 +10,8 @@ export const registerRandomStringStep = function (app) {
       type: "workflow_step_edit",
       callback_id: STEP_CALLBACK_ID,
     },
-    async ({ body, ack, context }) => {
-      ack();
+    async ({ body, ack, logger, client }) => {
+      await ack();
 
       const { workflow_step: { inputs = {} } = {} } = body;
 
@@ -20,9 +20,8 @@ export const registerRandomStringStep = function (app) {
         strings: get(inputs, "strings.value", []),
       };
 
-      app.logger.info("Opening config view", state);
-      await app.client.views.open({
-        token: context.botToken,
+      logger.info("Opening config view", state);
+      await client.views.open({
         trigger_id: body.trigger_id,
         view: renderStepConfig(state),
       });
@@ -30,7 +29,7 @@ export const registerRandomStringStep = function (app) {
   );
 
   // Handle saving of step config
-  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, context }) => {
+  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, logger, client }) => {
     const workflowStepEditId = get(body, `workflow_step.workflow_step_edit_id`);
 
     const text1 = get(view, `state.values.text_1.text_1.value`);
@@ -79,7 +78,6 @@ export const registerRandomStringStep = function (app) {
     // Now we need to update the step
     // Construct payload for updating the step
     const params = {
-      token: context.botToken,
       workflow_step_edit_id: workflowStepEditId,
       inputs,
       outputs: [
@@ -97,18 +95,18 @@ export const registerRandomStringStep = function (app) {
       params.step_image_url = text5;
     }
 
-    app.logger.info("updateStep params: ", params);
+    logger.info("updateStep params: ", params);
 
     // Call the api to save our step config - we do this prior to the ack of the view_submission
     try {
-      await app.client.apiCall("workflows.updateStep", params);
+      await client.workflows.updateStep(params);
     } catch (e) {
-      app.logger.error("error updating step: ", e.message);
+      logger.error("error updating step: ", e.message);
     }
   });
 
   // Handle running the step
-  app.event("workflow_step_execute", async ({ event, body, context }) => {
+  app.event("workflow_step_execute", async ({ event, client, logger }) => {
     const { callback_id, workflow_step = {} } = event;
     if (callback_id !== STEP_CALLBACK_ID) {
       return;
@@ -119,21 +117,20 @@ export const registerRandomStringStep = function (app) {
     const values = strings.value || [];
 
     // Grab a random string
-    var randomString = values[Math.floor(Math.random() * values.length)];
+    const randomString = values[Math.floor(Math.random() * values.length)];
 
     // Report back that the step completed
     try {
-      await app.client.apiCall("workflows.stepCompleted", {
-        token: context.botToken,
+      await client.workflows.stepCompleted({
         workflow_step_execute_id,
         outputs: {
           random_string: randomString || "",
         },
       });
 
-      app.logger.info("step completed", randomString || "");
+      logger.info("step completed", randomString || "");
     } catch (e) {
-      app.logger.error("Error completing step", e.message, randomString || "");
+      logger.error("Error completing step", e.message, randomString || "");
     }
   });
 };

@@ -26,8 +26,8 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       type: "workflow_step_edit",
       callback_id: STEP_CALLBACK_ID,
     },
-    async ({ body, ack, context }) => {
-      ack();
+    async ({ body, ack, client }) => {
+      await ack();
 
       const {
         workflow_step: {
@@ -96,8 +96,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
           // Cannot save step until we authenticate
           view.submit_disabled = true;
 
-          await app.client.views.open({
-            token: context.botToken,
+          await client.views.open({
             trigger_id: body.trigger_id,
             view,
           });
@@ -109,8 +108,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       const statusText = get(inputs, "status_text.value");
       const statusEmoji = get(inputs, "status_emoji.value");
 
-      const userInfo = await app.client.users.info({
-        token: context.botToken,
+      const userInfo = await client.users.info({
         user: stepCredential.userId,
       });
 
@@ -129,8 +127,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       );
       view.external_id = externalViewId;
 
-      await app.client.views.open({
-        token: context.botToken,
+      await client.views.open({
         trigger_id: body.trigger_id,
         view,
       });
@@ -141,7 +138,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
   app.action("connect_account_button", async ({ ack }) => ack());
 
   // Handle saving of step config
-  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, context }) => {
+  app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, logger, client }) => {
     // Pull out any values from our view's state that we need that aren't part of the view submission
     const { userName, userImage } = parseStateFromView(view);
     const workflowStepEditId = get(body, `workflow_step.workflow_step_edit_id`);
@@ -175,11 +172,10 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       });
     }
 
-    ack();
+    await ack();
 
     // construct payload for updating the step
     const params = {
-      token: context.botToken,
       workflow_step_edit_id: workflowStepEditId,
       inputs,
       outputs: [
@@ -204,14 +200,14 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
 
     try {
       // Call the api to save our step config - we do this prior to the ack of the view_submission
-      await app.client.workflows.updateStep(params);
+      await client.workflows.updateStep(params);
     } catch (e) {
-      app.logger.error("error updating step: ", e.message);
+      logger.error("error updating step: ", e.message);
     }
   });
 
   // Handle running the step
-  app.event("workflow_step_execute", async ({ event, context }) => {
+  app.event("workflow_step_execute", async ({ event, logger, client }) => {
     const { callback_id, workflow_step = {} } = event;
     if (callback_id !== STEP_CALLBACK_ID) {
       return;
@@ -241,16 +237,15 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
     // Verify we have a step credential for this workflow/step combo
     if (!stepCredential || !userToken) {
       if (!stepCredential) {
-        app.logger.error("No step credential found", { workflow_id, step_id });
+        logger.error("No step credential found", { workflow_id, step_id });
       } else if (!userToken) {
-        app.logger.error("No user credential found", {
+        logger.error("No user credential found", {
           team_id: stepCredential.teamId,
           user_id: stepCredential.userId,
         });
       }
 
-      await app.client.workflows.stepFailed({
-        token: context.botToken,
+      await client.workflows.stepFailed({
         workflow_step_execute_id,
         error: {
           message:
@@ -265,7 +260,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       const statusText = status_text.value || "";
       const statusEmoji = status_emoji.value || "";
 
-      await app.client.users.profile.set({
+      await client.users.profile.set({
         token: userToken,
         profile: {
           status_text: statusText,
@@ -274,8 +269,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
       });
 
       // Report back that the step completed
-      await app.client.workflows.stepCompleted({
-        token: context.botToken,
+      await client.workflows.stepCompleted({
         workflow_step_execute_id,
         outputs: {
           status_user: stepCredential.userId,
@@ -284,11 +278,10 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
         },
       });
 
-      app.logger.info("step completed", status_text.value, status_emoji.value);
+      logger.info("step completed", status_text.value, status_emoji.value);
     } catch (e) {
-      app.logger.error("Error completing step", e.message);
-      await app.client.workflows.stepFailed({
-        token: context.botToken,
+      logger.error("Error completing step", e.message);
+      await client.workflows.stepFailed({
         error: {
           message: "We were unable to update the user profile status",
         },
