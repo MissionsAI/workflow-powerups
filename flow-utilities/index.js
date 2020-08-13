@@ -18,7 +18,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
       callback_id: STEP_CALLBACK_ID,
     },
     async ({ body, ack, context }) => {
-      ack();
+      await ack();
 
       const { workflow_step: { inputs = {} } = {} } = body;
 
@@ -39,7 +39,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
 
   // The subtype has been selected
   app.action(ACTION_SUBTYPE, async ({ body, action, ack, client }) => {
-    ack();
+    await ack();
     const { view } = body;
     const subtype = action.value
     const state = {
@@ -84,7 +84,7 @@ export const registerFlowUtilitiesStep = function (app, storage) {
       }
     };
 
-    ack();
+    await ack();
 
     const params = {
       workflow_step_edit_id: workflowStepEditId,

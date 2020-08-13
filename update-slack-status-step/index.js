@@ -135,7 +135,7 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
   );
 
   // Nothing to do here, it's a link button, but need to ack it
-  app.action("connect_account_button", async ({ ack }) => ack());
+  app.action("connect_account_button", async ({ ack }) => await ack());
 
   // Handle saving of step config
   app.view(VIEW_CALLBACK_ID, async ({ ack, view, body, logger, client }) => {

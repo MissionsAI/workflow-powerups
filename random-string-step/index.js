@@ -73,7 +73,7 @@ export const registerRandomStringStep = function (app) {
     }
 
     // ack the view submission, we're all good there
-    ack();
+    await ack();
 
     // Now we need to update the step
     // Construct payload for updating the step
