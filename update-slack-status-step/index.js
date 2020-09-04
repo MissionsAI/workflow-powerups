@@ -182,8 +182,8 @@ export const registerUpdateSlackStatusStep = function (app, storage) {
         {
           type: "user",
           name: "status_user",
-          label: `User who's status was updated`,
-        },
+          label: `User whose status was updated`,
+        }, 
         {
           type: "text",
           name: "status_text",
